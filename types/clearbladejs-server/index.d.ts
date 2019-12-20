@@ -1,8 +1,9 @@
-// Type definitions for clearbladejs-server 1.1
-// Project: https://docs.clearblade.com/v/3/4-developer_reference/platformsdk/ClearBlade.js/
+// Type definitions for non-npm package clearbladejs-server
+// Project: https://github.com/ClearBlade/native-libraries/blob/master/clearblade.md
 // Definitions by: Jim Bouquet <https://github.com/ClearBlade>
+//                 Clark Bynum <https://github.com/ClearBlade>
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
-// TypeScript Version: 2.4
+// TypeScript Version: 3.7.3
 
 /// <reference types="paho-mqtt" />
 declare namespace CbServer {
@@ -16,6 +17,7 @@ declare namespace CbServer {
         readonly userEmail: string;
         readonly userToken: string;
         readonly userid: string;
+        readonly service_instance_id: string;
     }
     type ReqTypes = BasicReq;
 
@@ -60,7 +62,7 @@ declare namespace CbServer {
         [key: string]: any;
     }
 
-    type CbCallback = (error: boolean, response: Resp) => void;
+    type CbCallback<T = Resp> = (error: boolean, response: T) => void;
 
     interface ClearBladeGlobal extends ClearBladeInt {
         user: APIUser;
@@ -107,10 +109,10 @@ declare namespace CbServer {
         loginUser(email: string, password: string, callback: CbCallback): void;
         logoutUser(callback: CbCallback): void;
         makeKVPair(key: string, value: string): KeyValuePair;
-        Messaging(options: MessagingOptions, callback: CbCallback): Messaging;
+        Messaging(options?: MessagingOptions, callback?: CbCallback): Messaging;
         newCollection(name: string, callback: CbCallback): void;
         Query(
-            options:
+            options?:
                 | QueryOptionsWithCollection
                 | QueryOptionsWithName
                 | QueryOptionsWithID
@@ -159,6 +161,23 @@ declare namespace CbServer {
         collectionID: string;
     }
 
+    interface CollectionSchema {
+        item_id: string;
+    }
+
+    interface CollectionFetchData {
+        DATA: Array<CollectionSchema>;
+        CURRENTPAGE: number;
+        NEXTPAGEURL: string | null;
+        PREVPAGEURL: string | null;
+        TOTAL: number;
+    }
+
+    type collectionFetchCallback = (
+        err: boolean,
+        data: CollectionFetchData
+    ) => void;
+
     interface Collection {
         user: APIUser;
         URI: string;
@@ -168,12 +187,21 @@ declare namespace CbServer {
         addColumn(options: object, callback: CbCallback): void;
         dropColumn(name: string, callback: CbCallback): void;
         deleteCollection(callback: CbCallback): void;
-        fetch(query: Query, callback: CbCallback): void;
-        create(newItem: Item, callback: CbCallback): void;
-        update(query: Query, changes: object, callback: CbCallback): void;
-        remove(query: Query, callback: CbCallback): void;
+        fetch(query: QueryObj, callback: collectionFetchCallback): void;
+        create(
+            newItem:
+                | Partial<Record<string, any>>
+                | Array<Partial<Record<string, any>>>,
+            callback: CbCallback<CollectionSchema[]>
+        ): void;
+        update(
+            query: QueryObj,
+            changes: object,
+            callback: CbCallback<"success">
+        ): void;
+        remove(query: QueryObj, callback: CbCallback): void;
         columns(callback: CbCallback): void;
-        count(query: Query, callback: CbCallback): void;
+        count(query: QueryObj, callback: CbCallback): void;
     }
 
     enum QuerySortDirections {
@@ -237,21 +265,21 @@ declare namespace CbServer {
         offset: number;
         limit: number;
 
-        ascending(field: string): void;
-        descending(field: string): void;
-        equalTo(field: string, value: QueryValue): void;
-        greaterThan(field: string, value: QueryValue): void;
-        greaterThanEqualTo(field: string, value: QueryValue): void;
-        lessThan(field: string, value: QueryValue): void;
-        lessThanEqualTo(field: string, value: QueryValue): void;
-        notEqualTo(field: string, value: QueryValue): void;
-        matches(field: string, pattern: QueryValue): void;
-        or(query: QueryObj): void;
-        setPage(pageSize: number, pageNum: number): void;
-        fetch(callback: CbCallback): void;
-        update(changes: object, callback: CbCallback): void;
-        columns(columnsArray: string[]): void;
-        remove(callback: CbCallback): void;
+        ascending(field: string): QueryObj;
+        descending(field: string): QueryObj;
+        equalTo(field: string, value: QueryValue): QueryObj;
+        greaterThan(field: string, value: QueryValue): QueryObj;
+        greaterThanEqualTo(field: string, value: QueryValue): QueryObj;
+        lessThan(field: string, value: QueryValue): QueryObj;
+        lessThanEqualTo(field: string, value: QueryValue): QueryObj;
+        notEqualTo(field: string, value: QueryValue): QueryObj;
+        matches(field: string, pattern: QueryValue): QueryObj;
+        or(query: QueryObj): QueryObj;
+        setPage(pageSize: number, pageNum: number): QueryObj;
+        fetch(callback: CbCallback): QueryObj;
+        update(changes: object, callback: CbCallback): QueryObj;
+        columns(columnsArray: string[]): QueryObj;
+        remove(callback: CbCallback): QueryObj;
     }
 
     interface ItemOptions extends CollectionOptionsWithID {}
@@ -314,6 +342,12 @@ declare namespace CbServer {
         count(query: QueryObj, callback: CbCallback): void;
     }
 
+    type WaitForMessageCallback = (
+        error: boolean,
+        message: string,
+        topic: string
+    ) => void;
+
     interface Messaging {
         user: APIUser;
         systemKey: string;
@@ -343,6 +377,11 @@ declare namespace CbServer {
         ): void;
         getCurrentTopics(callback: CbCallback): void;
         publish(topic: string, payload: string | ArrayBuffer): void;
+        subscribe(topic: string, callback: CbCallback): void;
+        waitForMessage(
+            topics: Array<string>,
+            wfmCallback: WaitForMessageCallback
+        ): void;
     }
 
     interface MessagingOptions {}
@@ -417,6 +456,6 @@ declare namespace CbServer {
         Update(options: object, callback: CbCallback): void;
         Delete(callback: CbCallback): void;
     }
-
-    let ClearBlade: ClearBladeGlobal;
 }
+
+declare var ClearBlade: CbServer.ClearBladeGlobal;
